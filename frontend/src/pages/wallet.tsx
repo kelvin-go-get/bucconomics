@@ -8,7 +8,12 @@ import {
   swapUSDCtoBUCC,
   Web3State,
 } from "@/lib/web3";
+import { getUser } from "@/services/AuthService";
+import { updateProfile } from "@/services/user";
 import { useState } from "react";
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+// Import the necessary functions
 
 function currency(n: number) {
   return new Intl.NumberFormat("en-UK", {
@@ -22,6 +27,7 @@ export default function WalletPage() {
   const [amount, setAmount] = useState(100);
   const [swapAmt, setSwapAmt] = useState(50);
   const [txs, setTxs] = useState(txHistory);
+  const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
 
   const isConnected = !!web3.address;
 
@@ -29,56 +35,125 @@ export default function WalletPage() {
     try {
       const state = await connectWallet();
       setWeb3(state);
+
+      // Call updateProfile after successful wallet connection
+      if (state.address) {
+        await updateUserProfileWithWallet(state.address);
+      } else {
+        toast.error("Wallet address not found after connection.");
+      }
     } catch (e: unknown) {
       if (e instanceof Error) {
-        alert(e.message || "Failed to connect wallet");
+        toast.error(e.message || "Failed to connect wallet");
       } else {
-        alert("Failed to connect wallet");
+        toast.error("Failed to connect wallet");
       }
     }
   }
 
+  async function updateUserProfileWithWallet(walletAddress: string) {
+    try {
+      setIsUpdatingProfile(true);
+      const user = await getUser();
+
+      if (!user || !user.id) {
+        throw new Error("User not found. Please log in again.");
+      }
+
+      // Update profile with wallet address
+      await updateProfile({
+        id: user.id,
+        fullName: user.fullName,
+        walletAddress: walletAddress,
+      });
+
+      toast.success("Wallet connected and profile updated successfully!");
+    } catch (error: unknown) {
+      console.error("Failed to update profile:", error);
+      if (error instanceof Error) {
+        toast.error(`Profile update failed: ${error.message}`);
+      } else {
+        toast.error("Failed to update profile with wallet address");
+      }
+    } finally {
+      setIsUpdatingProfile(false);
+    }
+  }
+
   async function onDeposit() {
-    const res = await depositBUCC(amount);
-    setTxs([
-      {
-        id: res.hash,
-        date: new Date().toISOString().slice(0, 10),
-        type: "Deposit",
-        amount,
-        token: "BUCC",
-        status: "Pending",
-      },
-      ...txs,
-    ]);
+    try {
+      const res = await depositBUCC(amount);
+      setTxs([
+        {
+          id: res.hash,
+          date: new Date().toISOString().slice(0, 10),
+          type: "Deposit",
+          amount,
+          token: "BUCC",
+          status: "Pending",
+        },
+        ...txs,
+      ]);
+      toast.success("Deposit initiated successfully!");
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        toast.error(`Deposit failed: ${error.message}`);
+      } else {
+        toast.error("Deposit failed");
+      }
+    }
   }
+
   async function onWithdraw() {
-    const res = await withdrawBUCC(amount);
-    setTxs([
-      {
-        id: res.hash,
-        date: new Date().toISOString().slice(0, 10),
-        type: "Withdraw",
-        amount,
-        token: "BUCC",
-        status: "Pending",
-      },
-      ...txs,
-    ]);
+    try {
+      const res = await withdrawBUCC(amount);
+      setTxs([
+        {
+          id: res.hash,
+          date: new Date().toISOString().slice(0, 10),
+          type: "Withdraw",
+          amount,
+          token: "BUCC",
+          status: "Pending",
+        },
+        ...txs,
+      ]);
+      toast.success("Withdrawal initiated successfully!");
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        toast.error(`Withdrawal failed: ${error.message}`);
+      } else {
+        toast.error("Withdrawal failed");
+      }
+    }
   }
+
   async function onSwap() {
-    const res = await swapUSDCtoBUCC(swapAmt);
-    setTxs([
-      {
-        id: res.hash,
-        date: new Date().toISOString().slice(0, 10),
-        type: "Swap",
-        amount: swapAmt,
-        token: "USDC→BUCC",
-        status: "Pending",
-      },
-      ...txs,
-    ]);
+    try {
+      const res = await swapUSDCtoBUCC(swapAmt);
+      setTxs([
+        {
+          id: res.hash,
+          date: new Date().toISOString().slice(0, 10),
+          type: "Swap",
+          amount: swapAmt,
+          token: "USDC→BUCC",
+          status: "Pending",
+        },
+        ...txs,
+      ]);
+      toast.success("Swap initiated successfully!");
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        toast.error(`Swap failed: ${error.message}`);
+      } else {
+        toast.error("Swap failed");
+      }
+    }
+  }
+  function truncateAddress(address: string, length = 6) {
+    if (!address) return "";
+    return `${address.slice(0, length)}...${address.slice(-length)}`;
   }
 
   return (
@@ -113,9 +188,10 @@ export default function WalletPage() {
             {!isConnected ? (
               <button
                 onClick={onConnect}
-                className="rounded-xl px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600"
+                disabled={isUpdatingProfile}
+                className="rounded-xl px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 disabled:opacity-50"
               >
-                Connect
+                {isUpdatingProfile ? "Updating..." : "Connect"}
               </button>
             ) : (
               <span className="text-xs bg-emerald-400/15 border border-emerald-300/30 px-2 py-1 rounded-lg">
@@ -123,8 +199,10 @@ export default function WalletPage() {
               </span>
             )}
           </div>
-          <div className="mt-2 font-mono text-sm">
-            {isConnected ? web3.address : "Not connected"}
+          <div className="mt-2 font-mono text-sm break-all">
+            {isConnected
+              ? truncateAddress(web3.address ?? "")
+              : "Not connected"}
           </div>
           <div className="mt-4">
             <div className="text-sm text-blue-200/70 mb-1">Amount (BUCC)</div>
@@ -151,7 +229,6 @@ export default function WalletPage() {
             </div>
           </div>
         </GlassCard>
-
         <GlassCard className="p-6">
           <div className="text-sm text-blue-200/70">Swap</div>
           <div className="text-lg font-semibold mt-1">USDC → BUCC</div>

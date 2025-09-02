@@ -1,9 +1,17 @@
+"use client";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { getUser } from "@/services/AuthService";
+
+interface User {
+  fullName: string;
+  email: string;
+}
 
 const nav = [
-  { href: "/", label: "Dashboard", icon: DashboardIcon },
+  { href: "/dashboard", label: "Dashboard", icon: DashboardIcon },
   { href: "/communities", label: "Communities", icon: CommunityIcon },
   { href: "/wallet", label: "Wallet", icon: WalletIcon },
   { href: "/savings", label: "Savings", icon: SavingsIcon },
@@ -13,6 +21,15 @@ const nav = [
 export default function Sidebar() {
   const pathname = usePathname();
   const [openUser, setOpenUser] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    setUser(getUser());
+  }, []);
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    window.location.href = "/login";
+  };
 
   return (
     <aside className="h-screen w-[270px] sticky top-0 p-4 flex flex-col gap-4 border-r border-white/10 bg-white/5 backdrop-blur-xl">
@@ -43,6 +60,7 @@ export default function Sidebar() {
                     ? "bg-gradient-to-r from-blue-800/50 to-indigo-700/40 border border-white/15"
                     : "hover:bg-white/10 border border-transparent"
                 }`}
+              prefetch
             >
               <Icon active={active} />
               <span className="text-sm">{label}</span>
@@ -60,19 +78,29 @@ export default function Sidebar() {
           onClick={() => setOpenUser((v) => !v)}
           className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 bg-white/8 border border-white/15 hover:bg-white/12 transition"
         >
-          <span className="relative">
-            <img
-              src="https://api.dicebear.com/7.x/thumbs/svg?seed=buc"
-              alt="avatar"
-              className="h-8 w-8 rounded-xl"
-            />
-            <span className="absolute -right-0 -bottom-0 h-3 w-3 rounded-full bg-emerald-400 ring-2 ring-[#0d1f38]" />
-          </span>
+          <Image
+            src={
+              user?.fullName
+                ? `https://api.dicebear.com/7.x/thumbs/svg?seed=${encodeURIComponent(
+                    user.fullName
+                  )}`
+                : "https://ui-avatars.com/api/?name=Guest&background=random&size=128"
+            }
+            alt="avatar"
+            width={32}
+            height={32}
+            className="h-8 w-8 rounded-xl"
+            unoptimized
+          />
+
+          <span className="absolute -right-0 -bottom-0 h-3 w-3 rounded-full bg-emerald-400 ring-2 ring-[#0d1f38]" />
           <div className="text-left">
             <div className="text-sm font-medium leading-tight">
-              Kelvin Ndemo
+              {user?.fullName || "Guest User"}
             </div>
-            <div className="text-[11px] text-blue-200/70">Online</div>
+            <div className="text-[11px] text-blue-200/70">
+              {user ? "Online" : "Offline"}
+            </div>
           </div>
           <svg
             className={`ml-auto h-4 w-4 transition ${
@@ -105,7 +133,10 @@ export default function Sidebar() {
             >
               My Communities
             </Link>
-            <button className="w-full text-left px-4 py-2.5 hover:bg-white/10 text-red-300">
+            <button
+              className="w-full text-left px-4 py-2.5 hover:bg-white/10 text-red-300"
+              onClick={handleLogout}
+            >
               Logout
             </button>
           </div>
@@ -116,7 +147,7 @@ export default function Sidebar() {
 }
 
 /* --- Minimal inline icons --- */
-function DashboardIcon({ active = false }) {
+function DashboardIcon({ active = false }: { active?: boolean }) {
   return (
     <svg
       className="h-5 w-5"
@@ -132,7 +163,7 @@ function DashboardIcon({ active = false }) {
     </svg>
   );
 }
-function CommunityIcon({ active = false }) {
+function CommunityIcon({ active = false }: { active?: boolean }) {
   return (
     <svg
       className="h-5 w-5"
@@ -148,7 +179,7 @@ function CommunityIcon({ active = false }) {
     </svg>
   );
 }
-function WalletIcon({ active = false }) {
+function WalletIcon({ active = false }: { active?: boolean }) {
   return (
     <svg
       className="h-5 w-5"
@@ -164,7 +195,7 @@ function WalletIcon({ active = false }) {
     </svg>
   );
 }
-function SavingsIcon({ active = false }) {
+function SavingsIcon({ active = false }: { active?: boolean }) {
   return (
     <svg
       className="h-5 w-5"
@@ -180,7 +211,7 @@ function SavingsIcon({ active = false }) {
     </svg>
   );
 }
-function LoansIcon({ active = false }) {
+function LoansIcon({ active = false }: { active?: boolean }) {
   return (
     <svg
       className="h-5 w-5"

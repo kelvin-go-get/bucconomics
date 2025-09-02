@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import AppLayout from "@/components/layout/AppLayout";
 import GlassCard from "@/components/ui/GlassCard";
 import TokenPricePanel from "@/components/TokenPricePanel";
@@ -14,8 +17,26 @@ import {
   Tooltip,
 } from "recharts";
 import { growthSeries } from "@/lib/data";
+import Loading from "@/components/common/Loading";
+import { getUser } from "@/services/AuthService";
 
 export default function Dashboard() {
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        await getUser();
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUser();
+  }, []);
+  if (loading) return <Loading />;
+
   return (
     <AppLayout>
       <motion.h1

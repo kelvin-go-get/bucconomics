@@ -8,13 +8,17 @@ datasource db {
 }
 
 model User {
-    id               Int       @id @default(autoincrement())
-    email            String    @unique
-    password         String
-    createdAt        DateTime  @default(now())
-    updatedAt        DateTime  @updatedAt
-    resetToken       String?
-    resetTokenExpiry DateTime?
+    id                String    @id @default(uuid())
+    email             String    @unique
+    password          String
+    fullName          String?
+    walletAddress     String?
+    role              String    @default("user")
+    isProfileComplete Boolean   @default(false)
+    resetToken        String?
+    resetTokenExpiry  DateTime?
+    createdAt         DateTime  @default(now())
+    updatedAt         DateTime  @updatedAt
 
     kyc     KYC?
     loans   Loan[]
@@ -24,15 +28,15 @@ model User {
 
 model KYC {
     id     Int    @id @default(autoincrement())
-    userId Int    @unique
+    userId String @unique
     status String @default("pending")
 
-    User User @relation(fields: [userId], references: [id])
+    user User @relation(fields: [userId], references: [id])
 }
 
 model Loan {
     id              Int        @id @default(autoincrement())
-    userId          Int
+    userId          String
     amount          Float
     status          LoanStatus @default(pending)
     repaymentAmount Float      @default(0)
@@ -43,7 +47,7 @@ model Loan {
 
 model Savings {
     id        Int      @id @default(autoincrement())
-    userId    Int
+    userId    String
     amount    Float
     createdAt DateTime @default(now())
 
@@ -52,7 +56,7 @@ model Savings {
 
 model Wallet {
     id               Int    @id @default(autoincrement())
-    userId           Int    @unique
+    userId           String @unique
     address          String
     tokenBalance     Float  @default(0)
     governanceWeight Float  @default(0)

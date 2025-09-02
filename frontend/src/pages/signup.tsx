@@ -1,11 +1,14 @@
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import toast from "react-hot-toast";
+import { signup } from "../services/AuthService";
 
 export default function Signup() {
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -15,24 +18,34 @@ export default function Signup() {
     e.preventDefault();
     setLoading(true);
 
+    // Create a persistent loading toast
+    const toastId = toast.loading("Signing up... Please wait.", {
+      duration: Infinity,
+    });
+
     try {
-      const res = await fetch("http://localhost:5000/api/auth/signup", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+      await signup({
+        fullName: form.name,
+        email: form.email,
+        password: form.password,
       });
 
-      const data = await res.json();
+      // Smoothly update the toast to success
+      toast.success("Account created successfully! Redirecting...", {
+        id: toastId,
+        duration: 2000, // show success for 2 seconds
+      });
 
-      if (!res.ok) throw new Error(data.message || "Signup failed");
-
-      toast.success("Account created successfully! You can now log in.");
-      setForm({ name: "", email: "", password: "" });
+      // Wait before redirect so user sees the toast
+      setTimeout(() => router.push("/dashboard"), 2000);
     } catch (err: unknown) {
       if (err instanceof Error) {
-        toast.error(err.message);
+        toast.error(err.message, { id: toastId, duration: 3000 });
       } else {
-        toast.error("An unexpected error occurred");
+        toast.error("An unexpected error occurred", {
+          id: toastId,
+          duration: 3000,
+        });
       }
     } finally {
       setLoading(false);
@@ -61,6 +74,7 @@ export default function Signup() {
               className="w-full px-4 py-2 rounded-xl bg-white/10 text-white placeholder-gray-400 border border-white/20 focus:ring-2 focus:ring-green-500 focus:outline-none"
             />
           </div>
+
           <div>
             <label className="block text-sm text-gray-300 mb-1">Email</label>
             <input
@@ -73,6 +87,7 @@ export default function Signup() {
               className="w-full px-4 py-2 rounded-xl bg-white/10 text-white placeholder-gray-400 border border-white/20 focus:ring-2 focus:ring-green-500 focus:outline-none"
             />
           </div>
+
           <div>
             <label className="block text-sm text-gray-300 mb-1">Password</label>
             <input
