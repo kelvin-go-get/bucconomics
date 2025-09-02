@@ -1,0 +1,71 @@
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model User {
+    id                String    @id @default(uuid())
+    email             String    @unique
+    password          String
+    fullName          String?
+    walletAddress     String?
+    role              String    @default("user")
+    isProfileComplete Boolean   @default(false)
+    resetToken        String?
+    resetTokenExpiry  DateTime?
+    createdAt         DateTime  @default(now())
+    updatedAt         DateTime  @updatedAt
+
+    kyc     KYC?
+    loans   Loan[]
+    savings Savings[]
+    wallet  Wallet?
+}
+
+model KYC {
+    id     Int    @id @default(autoincrement())
+    userId String @unique
+    status String @default("pending")
+
+    user User @relation(fields: [userId], references: [id])
+}
+
+model Loan {
+    id              Int        @id @default(autoincrement())
+    userId          String
+    amount          Float
+    status          LoanStatus @default(pending)
+    repaymentAmount Float      @default(0)
+    createdAt       DateTime   @default(now())
+
+    user User @relation(fields: [userId], references: [id])
+}
+
+model Savings {
+    id        Int      @id @default(autoincrement())
+    userId    String
+    amount    Float
+    createdAt DateTime @default(now())
+
+    user User @relation(fields: [userId], references: [id])
+}
+
+model Wallet {
+    id               Int    @id @default(autoincrement())
+    userId           String @unique
+    address          String
+    tokenBalance     Float  @default(0)
+    governanceWeight Float  @default(0)
+
+    user User @relation(fields: [userId], references: [id])
+}
+
+enum LoanStatus {
+    pending
+    approved
+    rejected
+}
